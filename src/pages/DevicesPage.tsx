@@ -1,30 +1,25 @@
-"use client";
-
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { TuyaDevice } from "@lib/types";
 import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
-import type { TuyaDevice } from "@/lib/types";
-import {
-  toggleDeviceAction,
-  renameDeviceAction,
-  controlShutterAction,
-} from "@/lib/actions";
+  devicesGetAll,
+  devicesSendCommand,
+  devicesRename,
+  devicesControlShutter,
+} from "@/api/ipc";
 
 function getCategoryIcon(category: string): string {
   switch (category) {
     case "dj":
     case "dd":
-      return "\u{1F4A1}";
+      return "\uD83D\uDCA1";
     case "cl":
     case "clkg":
-      return "\u{1FA9F}";
+      return "\uD83E\uDE9F";
     case "kg":
-      return "\u{1F50C}";
+      return "\uD83D\uDD0C";
     default:
-      return "\u{1F4F1}";
+      return "\uD83D\uDCF1";
   }
 }
 
@@ -52,20 +47,15 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
       deviceId: string;
       code: string;
       value: boolean;
-    }) => toggleDeviceAction(deviceId, code, value),
+    }) => devicesSendCommand(deviceId, [{ code, value }]),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["devices"] });
     },
   });
 
   const renameMutation = useMutation({
-    mutationFn: ({
-      deviceId,
-      name,
-    }: {
-      deviceId: string;
-      name: string;
-    }) => renameDeviceAction(deviceId, name),
+    mutationFn: ({ deviceId, name }: { deviceId: string; name: string }) =>
+      devicesRename(deviceId, name),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["devices"] });
     },
@@ -78,7 +68,7 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
     }: {
       deviceId: string;
       action: "open" | "close" | "stop";
-    }) => controlShutterAction(deviceId, action),
+    }) => devicesControlShutter(deviceId, action),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["devices"] });
     },
@@ -105,12 +95,10 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
 
   return (
     <div className="bg-card border border-card-border rounded-xl p-4 shadow-sm flex flex-col gap-3">
-      {/* Header row: icon + name + status */}
       <div className="flex items-center gap-3">
         <span className="text-2xl" aria-hidden="true">
           {getCategoryIcon(device.category)}
         </span>
-
         <div className="flex-1 min-w-0">
           {isEditing ? (
             <input
@@ -142,8 +130,6 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
             </button>
           )}
         </div>
-
-        {/* Online/offline badge */}
         <span
           className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full ${
             device.online
@@ -160,24 +146,17 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
         </span>
       </div>
 
-      {/* Current state */}
       {switchOn !== null && (
-        <p className="text-xs text-muted">
-          State: {switchOn ? "On" : "Off"}
-        </p>
+        <p className="text-xs text-muted">State: {switchOn ? "On" : "Off"}</p>
       )}
 
-      {/* Controls */}
       <div className="flex items-center gap-2 mt-auto">
         {isShutter ? (
           <>
             <button
               type="button"
               onClick={() =>
-                shutterMutation.mutate({
-                  deviceId: device.id,
-                  action: "open",
-                })
+                shutterMutation.mutate({ deviceId: device.id, action: "open" })
               }
               disabled={shutterMutation.isPending}
               className="bg-primary text-white rounded-lg px-4 py-2 hover:bg-primary-hover disabled:opacity-50 text-sm"
@@ -187,10 +166,7 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
             <button
               type="button"
               onClick={() =>
-                shutterMutation.mutate({
-                  deviceId: device.id,
-                  action: "close",
-                })
+                shutterMutation.mutate({ deviceId: device.id, action: "close" })
               }
               disabled={shutterMutation.isPending}
               className="bg-primary text-white rounded-lg px-4 py-2 hover:bg-primary-hover disabled:opacity-50 text-sm"
@@ -200,10 +176,7 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
             <button
               type="button"
               onClick={() =>
-                shutterMutation.mutate({
-                  deviceId: device.id,
-                  action: "stop",
-                })
+                shutterMutation.mutate({ deviceId: device.id, action: "stop" })
               }
               disabled={shutterMutation.isPending}
               className="bg-danger text-white rounded-lg px-4 py-2 hover:bg-danger-hover disabled:opacity-50 text-sm"
@@ -237,11 +210,7 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
 export default function DevicesPage() {
   const { data, isLoading, isError, error } = useQuery<TuyaDevice[]>({
     queryKey: ["devices"],
-    queryFn: async () => {
-      const res = await fetch("/api/tuya/devices");
-      if (!res.ok) throw new Error("Failed to fetch devices");
-      return res.json();
-    },
+    queryFn: devicesGetAll,
   });
 
   if (isLoading) {

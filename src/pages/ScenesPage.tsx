@@ -1,13 +1,13 @@
-"use client";
-
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { TuyaScene, TuyaDevice } from "@lib/types";
 import {
-  triggerSceneAction,
-  createSceneAction,
-  deleteSceneAction,
-} from "@/lib/actions";
-import type { TuyaScene, TuyaDevice } from "@/lib/types";
+  scenesGetAll,
+  scenesTrigger,
+  scenesCreate,
+  scenesDelete,
+  devicesGetAll,
+} from "@/api/ipc";
 
 interface ActionRow {
   entity_id: string;
@@ -30,11 +30,7 @@ export default function ScenesPage() {
     error: scenesError,
   } = useQuery<TuyaScene[]>({
     queryKey: ["scenes"],
-    queryFn: async () => {
-      const res = await fetch("/api/tuya/scenes");
-      if (!res.ok) throw new Error("Failed to fetch scenes");
-      return res.json();
-    },
+    queryFn: scenesGetAll,
   });
 
   const {
@@ -42,23 +38,19 @@ export default function ScenesPage() {
     isLoading: devicesLoading,
   } = useQuery<TuyaDevice[]>({
     queryKey: ["devices"],
-    queryFn: async () => {
-      const res = await fetch("/api/tuya/devices");
-      if (!res.ok) throw new Error("Failed to fetch devices");
-      return res.json();
-    },
+    queryFn: devicesGetAll,
     enabled: showCreateForm,
   });
 
   const triggerMutation = useMutation({
-    mutationFn: (sceneId: string) => triggerSceneAction(sceneId),
+    mutationFn: (sceneId: string) => scenesTrigger(sceneId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["scenes"] });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (sceneId: string) => deleteSceneAction(sceneId),
+    mutationFn: (sceneId: string) => scenesDelete(sceneId),
     onSuccess: () => {
       setDeleteConfirmId(null);
       queryClient.invalidateQueries({ queryKey: ["scenes"] });
@@ -74,7 +66,7 @@ export default function ScenesPage() {
           action_executor: "dpIssue" as const,
           executor_property: { switch_1: row.value } as Record<string, unknown>,
         }));
-      return createSceneAction(sceneName, actions);
+      return scenesCreate(sceneName, actions);
     },
     onSuccess: (result) => {
       if (result.success) {
@@ -117,16 +109,11 @@ export default function ScenesPage() {
         </button>
       </div>
 
-      {/* Create Scene Form */}
       {showCreateForm && (
         <div className="bg-card border border-card-border rounded-xl p-6 space-y-4">
           <h2 className="text-lg font-semibold">New Scene</h2>
-
           <div>
-            <label
-              htmlFor="scene-name"
-              className="block text-sm font-medium mb-1"
-            >
+            <label htmlFor="scene-name" className="block text-sm font-medium mb-1">
               Scene Name
             </label>
             <input
@@ -138,17 +125,13 @@ export default function ScenesPage() {
               className="w-full rounded-lg border border-card-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
-
           <div className="space-y-3">
             <p className="text-sm font-medium">Actions</p>
-
             {actionRows.map((row, index) => (
               <div key={index} className="flex items-center gap-3">
                 <select
                   value={row.entity_id}
-                  onChange={(e) =>
-                    updateActionRow(index, { entity_id: e.target.value })
-                  }
+                  onChange={(e) => updateActionRow(index, { entity_id: e.target.value })}
                   className="flex-1 rounded-lg border border-card-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="">Select device...</option>
@@ -159,18 +142,14 @@ export default function ScenesPage() {
                     </option>
                   ))}
                 </select>
-
                 <select
                   value={row.value ? "on" : "off"}
-                  onChange={(e) =>
-                    updateActionRow(index, { value: e.target.value === "on" })
-                  }
+                  onChange={(e) => updateActionRow(index, { value: e.target.value === "on" })}
                   className="rounded-lg border border-card-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="on">Turn On</option>
                   <option value="off">Turn Off</option>
                 </select>
-
                 {actionRows.length > 1 && (
                   <button
                     onClick={() => removeActionRow(index)}
@@ -182,7 +161,6 @@ export default function ScenesPage() {
                 )}
               </div>
             ))}
-
             <button
               onClick={addActionRow}
               className="text-sm font-medium text-primary hover:opacity-80 transition-opacity"
@@ -190,7 +168,6 @@ export default function ScenesPage() {
               + Add Action
             </button>
           </div>
-
           <div className="flex items-center gap-3 pt-2">
             <button
               onClick={() => createMutation.mutate()}
@@ -206,23 +183,11 @@ export default function ScenesPage() {
         </div>
       )}
 
-      {/* Scene List */}
-      {scenesLoading && (
-        <p className="text-sm text-muted-foreground">Loading scenes...</p>
-      )}
-
-      {scenesError && (
-        <p className="text-sm text-danger">
-          Failed to load scenes. Please try again.
-        </p>
-      )}
-
+      {scenesLoading && <p className="text-sm text-muted">Loading scenes...</p>}
+      {scenesError && <p className="text-sm text-danger">Failed to load scenes.</p>}
       {scenes && scenes.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          No scenes found. Create one to get started.
-        </p>
+        <p className="text-sm text-muted">No scenes found. Create one to get started.</p>
       )}
-
       {scenes && scenes.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {scenes.map((scene) => (
@@ -231,32 +196,25 @@ export default function ScenesPage() {
               className="bg-card border border-card-border rounded-xl p-4 shadow-sm space-y-3"
             >
               <h3 className="font-semibold text-base truncate">{scene.name}</h3>
-
               {scene.actions.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {scene.actions.length} action
-                  {scene.actions.length !== 1 ? "s" : ""}
+                <p className="text-xs text-muted">
+                  {scene.actions.length} action{scene.actions.length !== 1 ? "s" : ""}
                 </p>
               )}
-
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => triggerMutation.mutate(scene.scene_id)}
                   disabled={triggerMutation.isPending}
                   className="bg-success text-white rounded-lg px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
-                  {triggerMutation.isPending &&
-                  triggerMutation.variables === scene.scene_id
+                  {triggerMutation.isPending && triggerMutation.variables === scene.scene_id
                     ? "Triggering..."
                     : "Trigger"}
                 </button>
-
                 {deleteConfirmId === scene.scene_id ? (
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() =>
-                        deleteMutation.mutate(scene.scene_id)
-                      }
+                      onClick={() => deleteMutation.mutate(scene.scene_id)}
                       disabled={deleteMutation.isPending}
                       className="bg-danger text-white rounded-lg px-3 py-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
                     >

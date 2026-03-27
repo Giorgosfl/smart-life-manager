@@ -1,27 +1,45 @@
 {
   "name": "smart-life-manager",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
+  "main": "dist/electron/main.js",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "dev:renderer": "vite --config vite.config.ts",
+    "dev:main": "vite build --config vite.main.config.ts --watch",
+    "dev:preload": "vite build --config vite.preload.config.ts --watch",
+    "dev": "concurrently -k \"npm run dev:renderer\" \"npm run dev:main\" \"npm run dev:preload\" \"wait-on http://localhost:5173 && electron .\"",
+    "build:renderer": "vite build --config vite.config.ts",
+    "build:main": "vite build --config vite.main.config.ts && vite build --config vite.preload.config.ts",
+    "build": "npm run build:renderer && npm run build:main",
+    "dist": "npm run build && electron-builder",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:linux": "npm run build && electron-builder --linux",
+    "lint": "eslint src electron"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.95.2",
-    "next": "16.2.1",
+    "electron-store": "^8.2.0",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "react-router-dom": "^7.13.2"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
+    "@eslint/js": "^9.39.4",
+    "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.1",
+    "concurrently": "^9.2.1",
+    "electron": "^35.7.5",
+    "electron-builder": "^26.8.1",
     "eslint": "^9",
-    "eslint-config-next": "16.2.1",
+    "geist": "^1.7.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "typescript-eslint": "^8.57.2",
+    "vite": "^8.0.3",
+    "wait-on": "^9.0.4"
   }
 }

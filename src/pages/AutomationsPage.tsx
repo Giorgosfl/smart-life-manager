@@ -1,52 +1,35 @@
-"use client";
-
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { TuyaAutomation, TuyaDevice, CreateAutomationBody } from "@lib/types";
 import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
-import type {
-  TuyaAutomation,
-  TuyaDevice,
-  CreateAutomationBody,
-} from "@/lib/types";
-import {
-  createAutomationAction,
-  toggleAutomationAction,
-  deleteAutomationAction,
-} from "@/lib/actions";
+  automationsGetAll,
+  automationsCreate,
+  automationsToggle,
+  automationsDelete,
+  devicesGetAll,
+} from "@/api/ipc";
 
 function AutomationCard({ automation }: { automation: TuyaAutomation }) {
   const queryClient = useQueryClient();
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const toggleMutation = useMutation({
-    mutationFn: ({
-      automationId,
-      enabled,
-    }: {
-      automationId: string;
-      enabled: boolean;
-    }) => toggleAutomationAction(automationId, enabled),
+    mutationFn: ({ automationId, enabled }: { automationId: string; enabled: boolean }) =>
+      automationsToggle(automationId, enabled),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["automations"] });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (automationId: string) =>
-      deleteAutomationAction(automationId),
+    mutationFn: (automationId: string) => automationsDelete(automationId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["automations"] });
     },
   });
 
   function handleToggle() {
-    toggleMutation.mutate({
-      automationId: automation.id,
-      enabled: !automation.enabled,
-    });
+    toggleMutation.mutate({ automationId: automation.id, enabled: !automation.enabled });
   }
 
   function handleDelete() {
@@ -61,11 +44,7 @@ function AutomationCard({ automation }: { automation: TuyaAutomation }) {
   return (
     <div className="bg-card border border-card-border rounded-xl p-4 shadow-sm flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold truncate flex-1">
-          {automation.name}
-        </h3>
-
-        {/* Toggle switch */}
+        <h3 className="text-sm font-semibold truncate flex-1">{automation.name}</h3>
         <button
           type="button"
           role="switch"
@@ -84,19 +63,15 @@ function AutomationCard({ automation }: { automation: TuyaAutomation }) {
           />
         </button>
       </div>
-
       <p className="text-xs text-muted">
         Status: {automation.enabled ? "Enabled" : "Disabled"}
       </p>
-
       {automation.conditions.length > 0 && (
         <p className="text-xs text-muted">
-          Conditions: {automation.conditions.length} | Actions:{" "}
-          {automation.actions.length} | Match:{" "}
-          {automation.match_type === 1 ? "All" : "Any"}
+          Conditions: {automation.conditions.length} | Actions: {automation.actions.length} |
+          Match: {automation.match_type === 1 ? "All" : "Any"}
         </p>
       )}
-
       <div className="flex items-center gap-2 mt-auto">
         {confirmDelete ? (
           <>
@@ -132,7 +107,6 @@ function AutomationCard({ automation }: { automation: TuyaAutomation }) {
 
 function CreateAutomationForm() {
   const queryClient = useQueryClient();
-
   const [name, setName] = useState("");
   const [conditionDeviceId, setConditionDeviceId] = useState("");
   const [conditionValue, setConditionValue] = useState("true");
@@ -142,15 +116,11 @@ function CreateAutomationForm() {
 
   const { data: devices } = useQuery<TuyaDevice[]>({
     queryKey: ["devices"],
-    queryFn: async () => {
-      const res = await fetch("/api/tuya/devices");
-      if (!res.ok) throw new Error("Failed to fetch devices");
-      return res.json();
-    },
+    queryFn: devicesGetAll,
   });
 
   const createMutation = useMutation({
-    mutationFn: (body: CreateAutomationBody) => createAutomationAction(body),
+    mutationFn: (body: CreateAutomationBody) => automationsCreate(body),
     onSuccess: (result) => {
       if (result.success) {
         queryClient.invalidateQueries({ queryKey: ["automations"] });
@@ -167,32 +137,24 @@ function CreateAutomationForm() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim() || !conditionDeviceId || !actionDeviceId) return;
-
     const body: CreateAutomationBody = {
       name: name.trim(),
       conditions: [
         {
           entity_id: conditionDeviceId,
           entity_type: 1,
-          display: {
-            code: "switch_1",
-            operator: "==",
-            value: conditionValue === "true",
-          },
+          display: { code: "switch_1", operator: "==", value: conditionValue === "true" },
         },
       ],
       actions: [
         {
           entity_id: actionDeviceId,
           action_executor: "dpIssue",
-          executor_property: {
-            switch_1: actionValue === "true",
-          },
+          executor_property: { switch_1: actionValue === "true" },
         },
       ],
       match_type: matchType,
     };
-
     createMutation.mutate(body);
   }
 
@@ -201,142 +163,56 @@ function CreateAutomationForm() {
   return (
     <div className="bg-card border border-card-border rounded-xl p-4 shadow-sm">
       <h2 className="text-lg font-semibold mb-4">Create Automation</h2>
-
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        {/* Name */}
         <div className="flex flex-col gap-1">
-          <label htmlFor="automation-name" className="text-sm font-medium">
-            Automation Name
-          </label>
-          <input
-            id="automation-name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="My automation"
-            required
-            className="rounded-lg border border-card-border bg-transparent px-3 py-2 text-sm outline-none focus:border-primary"
-          />
+          <label htmlFor="automation-name" className="text-sm font-medium">Automation Name</label>
+          <input id="automation-name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="My automation" required className="rounded-lg border border-card-border bg-transparent px-3 py-2 text-sm outline-none focus:border-primary" />
         </div>
-
-        {/* When section */}
         <fieldset className="flex flex-col gap-2 border border-card-border rounded-lg p-3">
-          <legend className="text-sm font-medium px-1">
-            When (Condition)
-          </legend>
-
+          <legend className="text-sm font-medium px-1">When (Condition)</legend>
           <div className="flex flex-col gap-1">
-            <label htmlFor="condition-device" className="text-xs text-muted">
-              Device
-            </label>
-            <select
-              id="condition-device"
-              value={conditionDeviceId}
-              onChange={(e) => setConditionDeviceId(e.target.value)}
-              required
-              className="rounded-lg border border-card-border bg-transparent px-3 py-2 text-sm outline-none focus:border-primary"
-            >
+            <label htmlFor="condition-device" className="text-xs text-muted">Device</label>
+            <select id="condition-device" value={conditionDeviceId} onChange={(e) => setConditionDeviceId(e.target.value)} required className="rounded-lg border border-card-border bg-transparent px-3 py-2 text-sm outline-none focus:border-primary">
               <option value="">Select device...</option>
-              {deviceList.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
+              {deviceList.map((d) => (<option key={d.id} value={d.id}>{d.name}</option>))}
             </select>
           </div>
-
           <div className="flex flex-col gap-1">
-            <label htmlFor="condition-state" className="text-xs text-muted">
-              switch_1 state
-            </label>
-            <select
-              id="condition-state"
-              value={conditionValue}
-              onChange={(e) => setConditionValue(e.target.value)}
-              className="rounded-lg border border-card-border bg-transparent px-3 py-2 text-sm outline-none focus:border-primary"
-            >
+            <label htmlFor="condition-state" className="text-xs text-muted">switch_1 state</label>
+            <select id="condition-state" value={conditionValue} onChange={(e) => setConditionValue(e.target.value)} className="rounded-lg border border-card-border bg-transparent px-3 py-2 text-sm outline-none focus:border-primary">
               <option value="true">ON</option>
               <option value="false">OFF</option>
             </select>
           </div>
         </fieldset>
-
-        {/* Then section */}
         <fieldset className="flex flex-col gap-2 border border-card-border rounded-lg p-3">
-          <legend className="text-sm font-medium px-1">
-            Then (Action)
-          </legend>
-
+          <legend className="text-sm font-medium px-1">Then (Action)</legend>
           <div className="flex flex-col gap-1">
-            <label htmlFor="action-device" className="text-xs text-muted">
-              Device
-            </label>
-            <select
-              id="action-device"
-              value={actionDeviceId}
-              onChange={(e) => setActionDeviceId(e.target.value)}
-              required
-              className="rounded-lg border border-card-border bg-transparent px-3 py-2 text-sm outline-none focus:border-primary"
-            >
+            <label htmlFor="action-device" className="text-xs text-muted">Device</label>
+            <select id="action-device" value={actionDeviceId} onChange={(e) => setActionDeviceId(e.target.value)} required className="rounded-lg border border-card-border bg-transparent px-3 py-2 text-sm outline-none focus:border-primary">
               <option value="">Select device...</option>
-              {deviceList.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
+              {deviceList.map((d) => (<option key={d.id} value={d.id}>{d.name}</option>))}
             </select>
           </div>
-
           <div className="flex flex-col gap-1">
-            <label htmlFor="action-state" className="text-xs text-muted">
-              switch_1 action
-            </label>
-            <select
-              id="action-state"
-              value={actionValue}
-              onChange={(e) => setActionValue(e.target.value)}
-              className="rounded-lg border border-card-border bg-transparent px-3 py-2 text-sm outline-none focus:border-primary"
-            >
+            <label htmlFor="action-state" className="text-xs text-muted">switch_1 action</label>
+            <select id="action-state" value={actionValue} onChange={(e) => setActionValue(e.target.value)} className="rounded-lg border border-card-border bg-transparent px-3 py-2 text-sm outline-none focus:border-primary">
               <option value="true">ON</option>
               <option value="false">OFF</option>
             </select>
           </div>
         </fieldset>
-
-        {/* Match type */}
         <div className="flex flex-col gap-1">
-          <label htmlFor="match-type" className="text-sm font-medium">
-            Match Type
-          </label>
-          <select
-            id="match-type"
-            value={matchType}
-            onChange={(e) => setMatchType(Number(e.target.value) as 1 | 2)}
-            className="rounded-lg border border-card-border bg-transparent px-3 py-2 text-sm outline-none focus:border-primary"
-          >
+          <label htmlFor="match-type" className="text-sm font-medium">Match Type</label>
+          <select id="match-type" value={matchType} onChange={(e) => setMatchType(Number(e.target.value) as 1 | 2)} className="rounded-lg border border-card-border bg-transparent px-3 py-2 text-sm outline-none focus:border-primary">
             <option value={1}>All conditions (AND)</option>
             <option value={2}>Any condition (OR)</option>
           </select>
         </div>
-
-        {/* Error message */}
         {createMutation.data && !createMutation.data.success && (
-          <p className="text-danger text-sm">
-            {createMutation.data.error}
-          </p>
+          <p className="text-danger text-sm">{createMutation.data.error}</p>
         )}
-
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={
-            createMutation.isPending ||
-            !name.trim() ||
-            !conditionDeviceId ||
-            !actionDeviceId
-          }
-          className="bg-primary text-white rounded-lg px-4 py-2 hover:bg-primary-hover disabled:opacity-50 text-sm font-medium"
-        >
+        <button type="submit" disabled={createMutation.isPending || !name.trim() || !conditionDeviceId || !actionDeviceId} className="bg-primary text-white rounded-lg px-4 py-2 hover:bg-primary-hover disabled:opacity-50 text-sm font-medium">
           {createMutation.isPending ? "Creating..." : "Create"}
         </button>
       </form>
@@ -347,49 +223,23 @@ function CreateAutomationForm() {
 export default function AutomationsPage() {
   const { data, isLoading, isError, error } = useQuery<TuyaAutomation[]>({
     queryKey: ["automations"],
-    queryFn: async () => {
-      const res = await fetch("/api/tuya/automations");
-      if (!res.ok) throw new Error("Failed to fetch automations");
-      return res.json();
-    },
+    queryFn: automationsGetAll,
   });
 
-  if (isLoading) {
-    return (
-      <div className="p-6">
-        <p className="text-muted">Loading automations...</p>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="p-6">
-        <p className="text-danger">
-          Error loading automations:{" "}
-          {error instanceof Error ? error.message : "Unknown error"}
-        </p>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="p-6"><p className="text-muted">Loading automations...</p></div>;
+  if (isError) return <div className="p-6"><p className="text-danger">Error: {error instanceof Error ? error.message : "Unknown"}</p></div>;
 
   const automations = data ?? [];
 
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Automations</h1>
-
-      <div className="mb-8">
-        <CreateAutomationForm />
-      </div>
-
+      <div className="mb-8"><CreateAutomationForm /></div>
       {automations.length === 0 ? (
         <p className="text-muted">No automations found.</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {automations.map((automation) => (
-            <AutomationCard key={automation.id} automation={automation} />
-          ))}
+          {automations.map((a) => (<AutomationCard key={a.id} automation={a} />))}
         </div>
       )}
     </div>

@@ -1,0 +1,36 @@
+appId: com.smartlife.manager
+productName: Smart Life Manager
+
+directories:
+  buildResources: build
+  output: dist/packages
+
+files:
+  - dist/electron/**/*
+  - dist/renderer/**/*
+  - data/mirrors.json
+  - package.json
+
+extraMetadata:
+  main: dist/electron/main.js
+
+mac:
+  category: public.app-category.utilities
+  target:
+    - target: dmg
+      arch: [universal]
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+  category: Utility
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true

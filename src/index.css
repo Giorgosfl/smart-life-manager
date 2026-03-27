@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Geist";
+  src: url("./assets/fonts/Geist-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("./assets/fonts/GeistMono-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
@@ -9,6 +23,7 @@
   --primary-hover: #1d4ed8;
   --success: #16a34a;
   --danger: #dc2626;
+  --danger-hover: #b91c1c;
   --warning: #f59e0b;
   --muted: #64748b;
 }
@@ -22,10 +37,11 @@
   --color-primary-hover: var(--primary-hover);
   --color-success: var(--success);
   --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
   --color-warning: var(--warning);
   --color-muted: var(--muted);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: "Geist", Arial, Helvetica, sans-serif;
+  --font-mono: "Geist Mono", monospace;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -42,5 +58,5 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans, Arial, Helvetica, sans-serif);
+  font-family: var(--font-sans);
 }
