@@ -90,6 +90,7 @@ export interface MirrorButton {
   device_id: string;
   button_code: string;
   label: string;
+  room: string;
 }
 
 export interface MirrorGroup {

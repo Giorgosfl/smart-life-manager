@@ -228,6 +228,15 @@ async function writeMirrorGroups(data: MirrorGroupsData): Promise<void> {
   await fs.writeFile(MIRRORS_PATH, JSON.stringify(data, null, 2), "utf-8");
 }
 
+function mirrorPairLabel(a: MirrorButton, b: MirrorButton): string {
+  if (a.room && b.room && a.room === b.room) {
+    // Same room - strip room from second label to avoid repetition
+    const bShort = b.label.replace(`${b.room} `, "");
+    return `${a.label} \u2194 ${bShort}`;
+  }
+  return `${a.label} \u2194 ${b.label}`;
+}
+
 export async function createMirrorGroupAction(
   name: string,
   main: MirrorButton,
@@ -239,7 +248,7 @@ export async function createMirrorGroupAction(
     for (const mirror of mirrors) {
       // main ON -> mirror ON
       const a1 = await createAutomation({
-        name: `Mirror: ${main.label} \u2194 ${mirror.label} (ON\u2192ON)`,
+        name: `Mirror: ${mirrorPairLabel(main, mirror)} (ON\u2192ON)`,
         conditions: [
           {
             entity_id: main.device_id,
@@ -265,7 +274,7 @@ export async function createMirrorGroupAction(
 
       // main OFF -> mirror OFF
       const a2 = await createAutomation({
-        name: `Mirror: ${main.label} \u2194 ${mirror.label} (OFF\u2192OFF)`,
+        name: `Mirror: ${mirrorPairLabel(main, mirror)} (OFF\u2192OFF)`,
         conditions: [
           {
             entity_id: main.device_id,
@@ -291,7 +300,7 @@ export async function createMirrorGroupAction(
 
       // mirror ON -> main ON
       const a3 = await createAutomation({
-        name: `Mirror: ${mirror.label} \u2194 ${main.label} (ON\u2192ON)`,
+        name: `Mirror: ${mirrorPairLabel(mirror, main)} (ON\u2192ON)`,
         conditions: [
           {
             entity_id: mirror.device_id,
@@ -317,7 +326,7 @@ export async function createMirrorGroupAction(
 
       // mirror OFF -> main OFF
       const a4 = await createAutomation({
-        name: `Mirror: ${mirror.label} \u2194 ${main.label} (OFF\u2192OFF)`,
+        name: `Mirror: ${mirrorPairLabel(mirror, main)} (OFF\u2192OFF)`,
         conditions: [
           {
             entity_id: mirror.device_id,

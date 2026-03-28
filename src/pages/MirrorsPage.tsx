@@ -47,8 +47,8 @@ function StepIndicator({ currentStep, onStepClick }: { currentStep: number; onSt
   );
 }
 
-function DeviceButtonPicker({ device, functionsCache, onExpand, selectedButtons, onToggleButton, mode, disabledButton }: {
-  device: TuyaDevice; functionsCache: DeviceFunctionsCache; onExpand: (deviceId: string) => void;
+function DeviceButtonPicker({ device, roomName, functionsCache, onExpand, selectedButtons, onToggleButton, mode, disabledButton }: {
+  device: TuyaDevice; roomName: string; functionsCache: DeviceFunctionsCache; onExpand: (deviceId: string) => void;
   selectedButtons: MirrorButton[]; onToggleButton: (btn: MirrorButton) => void;
   mode: "radio" | "checkbox"; disabledButton?: MirrorButton | null;
 }) {
@@ -77,8 +77,8 @@ function DeviceButtonPicker({ device, functionsCache, onExpand, selectedButtons,
           {cache?.error && <p className="text-xs text-danger">{cache.error}</p>}
           {!isLoading && !cache?.error && booleanFunctions.length === 0 && <p className="text-xs text-muted">No Boolean buttons found on this device.</p>}
           {booleanFunctions.map((fn) => {
-            const label = `${device.name} - ${fn.code}`;
-            const btn: MirrorButton = { device_id: device.id, button_code: fn.code, label };
+            const label = `${roomName} ${device.name} - ${fn.code}`;
+            const btn: MirrorButton = { device_id: device.id, button_code: fn.code, label, room: roomName };
             const disabled = isDisabled(fn.code);
             const selected = isSelected(fn.code);
             return (
@@ -262,7 +262,7 @@ export default function MirrorsPage() {
                 <div key={roomName}>
                   <h3 className="text-sm font-semibold text-muted mb-2">{roomName}</h3>
                   <div className="flex flex-col gap-2">
-                    {roomDevices.map((device) => (<DeviceButtonPicker key={device.id} device={device} functionsCache={functionsCache} onExpand={handleExpandDevice} selectedButtons={mainButton ? [mainButton] : []} onToggleButton={handleSelectMain} mode="radio" />))}
+                    {roomDevices.map((device) => (<DeviceButtonPicker key={device.id} device={device} roomName={roomName} functionsCache={functionsCache} onExpand={handleExpandDevice} selectedButtons={mainButton ? [mainButton] : []} onToggleButton={handleSelectMain} mode="radio" />))}
                   </div>
                 </div>
               ))}
@@ -281,7 +281,7 @@ export default function MirrorsPage() {
                 <div key={roomName}>
                   <h3 className="text-sm font-semibold text-muted mb-2">{roomName}</h3>
                   <div className="flex flex-col gap-2">
-                    {roomDevices.map((device) => (<DeviceButtonPicker key={device.id} device={device} functionsCache={functionsCache} onExpand={handleExpandDevice} selectedButtons={mirrors} onToggleButton={handleToggleMirror} mode="checkbox" disabledButton={mainButton} />))}
+                    {roomDevices.map((device) => (<DeviceButtonPicker key={device.id} device={device} roomName={roomName} functionsCache={functionsCache} onExpand={handleExpandDevice} selectedButtons={mirrors} onToggleButton={handleToggleMirror} mode="checkbox" disabledButton={mainButton} />))}
                   </div>
                 </div>
               ))}
