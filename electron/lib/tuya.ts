@@ -164,14 +164,10 @@ export async function getRooms(): Promise<TuyaRoom[]> {
     "GET",
     `/v1.0/homes/${homeId}/rooms`
   );
-  console.log("[getRooms] raw result:", JSON.stringify(result, null, 2));
-
   // Extract rooms array - handle both wrapped and direct formats
   const rawRooms: { room_id: number; name: string }[] =
     Array.isArray(result) ? result :
     (result as Record<string, unknown>)?.rooms as { room_id: number; name: string }[] ?? [];
-
-  console.log("[getRooms] parsed rooms:", rawRooms.length);
 
   // Fetch device IDs for each room in parallel
   const rooms = await Promise.all(
@@ -181,7 +177,6 @@ export async function getRooms(): Promise<TuyaRoom[]> {
           "GET",
           `/v1.0/homes/${homeId}/rooms/${room.room_id}/devices`
         );
-        console.log(`[getRooms] room "${room.name}" devices:`, JSON.stringify(devices, null, 2));
         const deviceList = Array.isArray(devices) ? devices : [];
         return {
           room_id: room.room_id,
@@ -189,7 +184,7 @@ export async function getRooms(): Promise<TuyaRoom[]> {
           devices: deviceList.map((d: { id: string }) => d.id),
         };
       } catch (err) {
-        console.error(`[getRooms] Error fetching devices for room "${room.name}":`, err);
+        console.error(`Error fetching devices for room "${room.name}":`, err);
         return { room_id: room.room_id, name: room.name, devices: [] };
       }
     })
