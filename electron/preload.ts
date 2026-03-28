@@ -4,6 +4,7 @@ const ALLOWED_CHANNELS = new Set([
   "credentials:exists",
   "credentials:get",
   "credentials:set",
+  "rooms:getAll",
   "devices:getAll",
   "devices:getFunctions",
   "devices:sendCommand",

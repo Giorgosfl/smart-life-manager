@@ -4,6 +4,7 @@ import {
   getDeviceFunctions,
   sendCommand,
   renameDevice,
+  getRooms,
   getScenes,
   getAutomations,
   getTimers,
@@ -22,6 +23,7 @@ import {
 
 export function registerTuyaHandlers(): void {
   // Queries - throw on error, TanStack Query catches
+  ipcMain.handle("rooms:getAll", () => getRooms());
   ipcMain.handle("devices:getAll", () => getDevices());
   ipcMain.handle("devices:getFunctions", (_e, deviceId: string) =>
     getDeviceFunctions(deviceId)

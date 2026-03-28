@@ -80,6 +80,12 @@ export interface TuyaHome {
   name: string;
 }
 
+export interface TuyaRoom {
+  room_id: number;
+  name: string;
+  devices: string[]; // device IDs in this room
+}
+
 export interface MirrorButton {
   device_id: string;
   button_code: string;

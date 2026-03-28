@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { TuyaDevice } from "@lib/types";
+import type { TuyaDevice, TuyaRoom } from "@lib/types";
 import {
   devicesGetAll,
   devicesSendCommand,
   devicesRename,
   devicesControlShutter,
+  roomsGetAll,
 } from "@/api/ipc";
 
 function getCategoryIcon(category: string): string {
@@ -207,11 +208,45 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
   );
 }
 
+function useDevicesByRoom(devices: TuyaDevice[], rooms: TuyaRoom[]) {
+  return useMemo(() => {
+    const deviceRoomMap = new Map<string, string>();
+    for (const room of rooms) {
+      for (const deviceId of room.devices) {
+        deviceRoomMap.set(deviceId, room.name);
+      }
+    }
+
+    const grouped = new Map<string, TuyaDevice[]>();
+    for (const device of devices) {
+      const roomName = deviceRoomMap.get(device.id) ?? "Other";
+      const list = grouped.get(roomName) ?? [];
+      list.push(device);
+      grouped.set(roomName, list);
+    }
+
+    // Sort: named rooms alphabetically, "Other" last
+    return Array.from(grouped.entries()).sort(([a], [b]) => {
+      if (a === "Other") return 1;
+      if (b === "Other") return -1;
+      return a.localeCompare(b);
+    });
+  }, [devices, rooms]);
+}
+
 export default function DevicesPage() {
   const { data, isLoading, isError, error } = useQuery<TuyaDevice[]>({
     queryKey: ["devices"],
     queryFn: devicesGetAll,
   });
+
+  const { data: rooms } = useQuery<TuyaRoom[]>({
+    queryKey: ["rooms"],
+    queryFn: roomsGetAll,
+  });
+
+  const devices = data ?? [];
+  const groupedDevices = useDevicesByRoom(devices, rooms ?? []);
 
   if (isLoading) {
     return (
@@ -232,17 +267,22 @@ export default function DevicesPage() {
     );
   }
 
-  const devices = data ?? [];
-
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Devices</h1>
       {devices.length === 0 ? (
         <p className="text-muted">No devices found.</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {devices.map((device) => (
-            <DeviceCard key={device.id} device={device} />
+        <div className="flex flex-col gap-8">
+          {groupedDevices.map(([roomName, roomDevices]) => (
+            <section key={roomName}>
+              <h2 className="text-lg font-semibold mb-3 text-muted">{roomName}</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {roomDevices.map((device) => (
+                  <DeviceCard key={device.id} device={device} />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       )}

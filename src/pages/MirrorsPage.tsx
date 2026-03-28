@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type {
   TuyaDevice,
   TuyaDeviceFunction,
+  TuyaRoom,
   MirrorButton,
   MirrorGroup,
   MirrorGroupsData,
@@ -10,6 +11,7 @@ import type {
 import {
   devicesGetAll,
   devicesGetFunctions,
+  roomsGetAll,
   mirrorsGetAll,
   mirrorsCreate,
   mirrorsDelete,
@@ -138,6 +140,11 @@ export default function MirrorsPage() {
     queryFn: devicesGetAll,
   });
 
+  const { data: rooms } = useQuery<TuyaRoom[]>({
+    queryKey: ["rooms"],
+    queryFn: roomsGetAll,
+  });
+
   const loadGroups = useCallback(async () => {
     setGroupsLoading(true);
     setGroupsError(null);
@@ -201,6 +208,27 @@ export default function MirrorsPage() {
   const automationCount = mirrors.length * 4;
   const deviceList = devices ?? [];
 
+  const groupedDevices = useMemo(() => {
+    const deviceRoomMap = new Map<string, string>();
+    for (const room of rooms ?? []) {
+      for (const deviceId of room.devices) {
+        deviceRoomMap.set(deviceId, room.name);
+      }
+    }
+    const grouped = new Map<string, TuyaDevice[]>();
+    for (const device of deviceList) {
+      const roomName = deviceRoomMap.get(device.id) ?? "Other";
+      const list = grouped.get(roomName) ?? [];
+      list.push(device);
+      grouped.set(roomName, list);
+    }
+    return Array.from(grouped.entries()).sort(([a], [b]) => {
+      if (a === "Other") return 1;
+      if (b === "Other") return -1;
+      return a.localeCompare(b);
+    });
+  }, [deviceList, rooms]);
+
   return (
     <div className="p-6 max-w-4xl">
       <h1 className="text-2xl font-bold mb-6">Mirror Groups</h1>
@@ -229,8 +257,15 @@ export default function MirrorsPage() {
             <p className="text-sm text-muted">Select the main button. When this button changes state, all mirrored buttons will follow.</p>
             {devicesLoading && <p className="text-muted text-sm">Loading devices...</p>}
             {devicesError && <p className="text-danger text-sm">Failed to load devices.</p>}
-            <div className="flex flex-col gap-2">
-              {deviceList.map((device) => (<DeviceButtonPicker key={device.id} device={device} functionsCache={functionsCache} onExpand={handleExpandDevice} selectedButtons={mainButton ? [mainButton] : []} onToggleButton={handleSelectMain} mode="radio" />))}
+            <div className="flex flex-col gap-4">
+              {groupedDevices.map(([roomName, roomDevices]) => (
+                <div key={roomName}>
+                  <h3 className="text-sm font-semibold text-muted mb-2">{roomName}</h3>
+                  <div className="flex flex-col gap-2">
+                    {roomDevices.map((device) => (<DeviceButtonPicker key={device.id} device={device} functionsCache={functionsCache} onExpand={handleExpandDevice} selectedButtons={mainButton ? [mainButton] : []} onToggleButton={handleSelectMain} mode="radio" />))}
+                  </div>
+                </div>
+              ))}
             </div>
             <div className="flex justify-end mt-2">
               <button type="button" disabled={!mainButton} onClick={() => setStep(2)} className="bg-primary text-white rounded-lg px-6 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
@@ -241,8 +276,15 @@ export default function MirrorsPage() {
         {step === 2 && (
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted">Select buttons that should mirror the main button (<span className="font-medium text-foreground">{mainButton?.label}</span>). Check any combination.</p>
-            <div className="flex flex-col gap-2">
-              {deviceList.map((device) => (<DeviceButtonPicker key={device.id} device={device} functionsCache={functionsCache} onExpand={handleExpandDevice} selectedButtons={mirrors} onToggleButton={handleToggleMirror} mode="checkbox" disabledButton={mainButton} />))}
+            <div className="flex flex-col gap-4">
+              {groupedDevices.map(([roomName, roomDevices]) => (
+                <div key={roomName}>
+                  <h3 className="text-sm font-semibold text-muted mb-2">{roomName}</h3>
+                  <div className="flex flex-col gap-2">
+                    {roomDevices.map((device) => (<DeviceButtonPicker key={device.id} device={device} functionsCache={functionsCache} onExpand={handleExpandDevice} selectedButtons={mirrors} onToggleButton={handleToggleMirror} mode="checkbox" disabledButton={mainButton} />))}
+                  </div>
+                </div>
+              ))}
             </div>
             <div className="flex justify-between mt-2">
               <button type="button" onClick={() => setStep(1)} className="text-sm text-muted hover:text-foreground transition-colors px-4 py-2">Back</button>

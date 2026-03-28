@@ -7,6 +7,7 @@ import type {
   TuyaAutomation,
   TuyaTimer,
   TuyaHome,
+  TuyaRoom,
   CreateAutomationBody,
   CreateSceneBody,
   CreateTimerBody,
@@ -153,6 +154,47 @@ async function getHomeId(): Promise<number> {
   }
   cachedHomeId = homes[0].home_id;
   return cachedHomeId;
+}
+
+// === Room APIs ===
+
+export async function getRooms(): Promise<TuyaRoom[]> {
+  const homeId = await getHomeId();
+  const result = await tuyaRequest<unknown>(
+    "GET",
+    `/v1.0/homes/${homeId}/rooms`
+  );
+  console.log("[getRooms] raw result:", JSON.stringify(result, null, 2));
+
+  // Extract rooms array - handle both wrapped and direct formats
+  const rawRooms: { room_id: number; name: string }[] =
+    Array.isArray(result) ? result :
+    (result as Record<string, unknown>)?.rooms as { room_id: number; name: string }[] ?? [];
+
+  console.log("[getRooms] parsed rooms:", rawRooms.length);
+
+  // Fetch device IDs for each room in parallel
+  const rooms = await Promise.all(
+    rawRooms.map(async (room) => {
+      try {
+        const devices = await tuyaRequest<unknown>(
+          "GET",
+          `/v1.0/homes/${homeId}/rooms/${room.room_id}/devices`
+        );
+        console.log(`[getRooms] room "${room.name}" devices:`, JSON.stringify(devices, null, 2));
+        const deviceList = Array.isArray(devices) ? devices : [];
+        return {
+          room_id: room.room_id,
+          name: room.name,
+          devices: deviceList.map((d: { id: string }) => d.id),
+        };
+      } catch (err) {
+        console.error(`[getRooms] Error fetching devices for room "${room.name}":`, err);
+        return { room_id: room.room_id, name: room.name, devices: [] };
+      }
+    })
+  );
+  return rooms;
 }
 
 // === Device APIs ===

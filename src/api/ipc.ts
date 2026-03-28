@@ -1,6 +1,7 @@
 import type {
   TuyaDevice,
   TuyaDeviceFunction,
+  TuyaRoom,
   TuyaScene,
   TuyaSceneAction,
   TuyaAutomation,
@@ -43,6 +44,10 @@ export const credentialsSet = (creds: {
   baseUrl: string;
   appUid: string;
 }) => invoke<ActionResult>("credentials:set", creds);
+
+// --- Rooms ---
+export const roomsGetAll = () =>
+  invoke<TuyaRoom[]>("rooms:getAll");
 
 // --- Devices ---
 export const devicesGetAll = () =>
