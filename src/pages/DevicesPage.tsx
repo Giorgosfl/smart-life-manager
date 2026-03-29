@@ -207,7 +207,7 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
                 shutterMutation.mutate({ deviceId: device.id, action: "open" })
               }
               disabled={shutterMutation.isPending}
-              className="bg-primary text-white rounded-lg px-4 py-2 text-sm transition-colors duration-150 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 disabled:opacity-50"
+              className="bg-primary text-white rounded-lg px-4 py-2 h-10 text-sm transition-colors duration-150 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 disabled:opacity-50"
             >
               Open
             </button>
@@ -217,7 +217,7 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
                 shutterMutation.mutate({ deviceId: device.id, action: "close" })
               }
               disabled={shutterMutation.isPending}
-              className="bg-primary text-white rounded-lg px-4 py-2 text-sm transition-colors duration-150 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 disabled:opacity-50"
+              className="bg-primary text-white rounded-lg px-4 py-2 h-10 text-sm transition-colors duration-150 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 disabled:opacity-50"
             >
               Close
             </button>
@@ -227,7 +227,7 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
                 shutterMutation.mutate({ deviceId: device.id, action: "stop" })
               }
               disabled={shutterMutation.isPending}
-              className="bg-danger text-white rounded-lg px-4 py-2 text-sm transition-colors duration-150 hover:bg-danger-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/50 focus-visible:ring-offset-2 disabled:opacity-50"
+              className="bg-danger text-white rounded-lg px-4 py-2 h-10 text-sm transition-colors duration-150 hover:bg-danger-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/50 focus-visible:ring-offset-2 disabled:opacity-50"
             >
               Stop
             </button>
@@ -239,7 +239,8 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
               type="button"
               onClick={() => handleToggle(sw.code, sw.value)}
               disabled={toggleMutation.isPending}
-              className={`rounded-lg px-4 py-2 text-white text-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 ${
+              title={`${switches.length > 1 ? `${sw.label} ` : ""}${sw.value ? "Off" : "On"}`}
+              className={`rounded-lg px-4 py-2 h-10 text-white text-sm truncate transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 ${
                 sw.value
                   ? "bg-danger hover:bg-danger-hover focus-visible:ring-danger/50"
                   : "bg-primary hover:bg-primary-hover focus-visible:ring-primary/50"
