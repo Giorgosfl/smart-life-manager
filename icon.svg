@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e40af"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="house" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e0e7ff"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square background -->
+  <rect width="1024" height="1024" rx="220" fill="url(#bg)"/>
+  <!-- House roof -->
+  <path d="M512 200 L820 440 L780 440 L780 780 L244 780 L244 440 L204 440 Z" fill="url(#house)" opacity="0.95"/>
+  <!-- Power symbol circle -->
+  <circle cx="512" cy="580" r="140" fill="none" stroke="#1e40af" stroke-width="40" stroke-dasharray="560 140" stroke-dashoffset="70"/>
+  <!-- Power symbol line -->
+  <line x1="512" y1="430" x2="512" y2="580" stroke="#1e40af" stroke-width="40" stroke-linecap="round"/>
+</svg>

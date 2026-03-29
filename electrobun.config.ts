@@ -7,6 +7,15 @@ export default {
     version: "1.0.0",
   },
   build: {
+    mac: {
+      icons: "icon.iconset",
+    },
+    linux: {
+      icon: "icon.png",
+    },
+    win: {
+      icon: "icon.ico",
+    },
     bun: {
       entrypoint: "src/bun/index.ts",
     },
