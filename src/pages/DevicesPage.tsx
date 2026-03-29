@@ -7,6 +7,8 @@ import {
   devicesRename,
   devicesControlShutter,
   roomsGetAll,
+  hiddenDevicesGet,
+  hiddenDevicesSet,
 } from "@/api/ipc";
 
 function getCategoryIcon(category: string): string {
@@ -46,6 +48,7 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(device.name);
+  const [confirmHide, setConfirmHide] = useState(false);
 
   const isShutter = device.category === "cl" || device.category === "clkg";
   const switches = getSwitchStatuses(device);
@@ -101,6 +104,25 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
       action: "open" | "close" | "stop";
     }) => devicesControlShutter(deviceId, action),
   });
+
+  const hideMutation = useMutation({
+    mutationFn: async (deviceId: string) => {
+      const current = await hiddenDevicesGet();
+      await hiddenDevicesSet([...current, deviceId]);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["devices"] });
+    },
+  });
+
+  function handleHide() {
+    if (!confirmHide) {
+      setConfirmHide(true);
+      return;
+    }
+    hideMutation.mutate(device.id);
+    setConfirmHide(false);
+  }
 
   function handleNameSave() {
     setIsEditing(false);
@@ -251,6 +273,37 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
             </button>
           ))
         ) : null}
+      </div>
+
+      <div className="border-t border-card-border pt-2">
+        {confirmHide ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted">Hide this device?</span>
+            <button
+              type="button"
+              onClick={handleHide}
+              disabled={hideMutation.isPending}
+              className="text-xs text-danger hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/50 rounded disabled:opacity-50"
+            >
+              {hideMutation.isPending ? "Hiding…" : "Confirm"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmHide(false)}
+              className="text-xs text-muted hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={handleHide}
+            className="text-xs text-muted hover:text-danger transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/50 rounded"
+          >
+            Hide
+          </button>
+        )}
       </div>
     </div>
   );

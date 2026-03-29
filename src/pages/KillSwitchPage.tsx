@@ -45,6 +45,7 @@ function ActiveConfig({
   onDelete: () => void;
   isDeleting: boolean;
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const triggerDevice = devices.find((d) => d.id === config.trigger.device_id);
   const excludedDevices = devices.filter((d) =>
     config.excluded_device_ids.includes(d.id)
@@ -90,14 +91,33 @@ function ActiveConfig({
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={isDeleting}
-          className="mt-6 w-full bg-danger text-white rounded-lg px-4 py-2 text-sm transition-colors duration-150 hover:bg-danger-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/50 focus-visible:ring-offset-2 disabled:opacity-50"
-        >
-          {isDeleting ? "Deleting…" : "Delete Kill Switch"}
-        </button>
+        {confirmDelete ? (
+          <div className="mt-6 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={isDeleting}
+              className="flex-1 bg-danger text-white rounded-lg px-4 py-2 text-sm transition-colors duration-150 hover:bg-danger-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/50 focus-visible:ring-offset-2 disabled:opacity-50"
+            >
+              {isDeleting ? "Deleting…" : "Confirm Delete"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(false)}
+              className="flex-1 bg-card border border-card-border text-foreground rounded-lg px-4 py-2 text-sm transition-colors duration-150 hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirmDelete(true)}
+            className="mt-6 w-full bg-danger text-white rounded-lg px-4 py-2 text-sm transition-colors duration-150 hover:bg-danger-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/50 focus-visible:ring-offset-2"
+          >
+            Delete Kill Switch
+          </button>
+        )}
       </div>
     </div>
   );
