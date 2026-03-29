@@ -17,6 +17,6 @@
       "@lib/*": ["./lib/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "electron/**/*.ts", "lib/**/*.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "lib/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

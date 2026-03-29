@@ -1,5 +1,5 @@
-import crypto from "crypto";
-import { getCredentials } from "../store";
+import crypto from "node:crypto";
+import { getCredentials } from "./store";
 import type {
   TuyaDevice,
   TuyaDeviceFunction,
@@ -11,7 +11,7 @@ import type {
   CreateAutomationBody,
   CreateSceneBody,
   CreateTimerBody,
-} from "@lib/types";
+} from "../../lib/types";
 
 // In-memory caches
 let cachedToken: { access_token: string; expires_at: number } | null = null;
@@ -80,7 +80,12 @@ async function getToken(): Promise<{ access_token: string; uid: string }> {
     },
   });
 
-  const data = await res.json();
+  const data = (await res.json()) as {
+    success: boolean;
+    msg?: string;
+    code?: number;
+    result: { access_token: string; expire_time: number; uid: string };
+  };
   if (!data.success) {
     throw new Error(`Tuya token error: ${data.msg} (code: ${data.code})`);
   }
@@ -130,11 +135,16 @@ async function tuyaRequest<T>(
     body: body ? bodyStr : undefined,
   });
 
-  const data = await res.json();
+  const data = (await res.json()) as {
+    success: boolean;
+    msg?: string;
+    code?: number;
+    result: T;
+  };
   if (!data.success) {
     throw new Error(`Tuya API error: ${data.msg} (code: ${data.code})`);
   }
-  return data.result as T;
+  return data.result;
 }
 
 async function getUid(): Promise<string> {
@@ -164,12 +174,13 @@ export async function getRooms(): Promise<TuyaRoom[]> {
     "GET",
     `/v1.0/homes/${homeId}/rooms`
   );
-  // Extract rooms array - handle both wrapped and direct formats
-  const rawRooms: { room_id: number; name: string }[] =
-    Array.isArray(result) ? result :
-    (result as Record<string, unknown>)?.rooms as { room_id: number; name: string }[] ?? [];
+  const rawRooms: { room_id: number; name: string }[] = Array.isArray(result)
+    ? result
+    : ((result as Record<string, unknown>)?.rooms as {
+        room_id: number;
+        name: string;
+      }[]) ?? [];
 
-  // Fetch device IDs for each room in parallel
   const rooms = await Promise.all(
     rawRooms.map(async (room) => {
       try {
@@ -183,8 +194,7 @@ export async function getRooms(): Promise<TuyaRoom[]> {
           name: room.name,
           devices: deviceList.map((d: { id: string }) => d.id),
         };
-      } catch (err) {
-        console.error(`Error fetching devices for room "${room.name}":`, err);
+      } catch {
         return { room_id: room.room_id, name: room.name, devices: [] };
       }
     })
@@ -229,46 +239,17 @@ export async function renameDevice(
 
 async function getSpaceId(): Promise<string> {
   if (cachedSpaceId) return cachedSpaceId;
-  // Try using home_id as space_id first (homes are built on spaces)
   const homeId = await getHomeId();
   cachedSpaceId = String(homeId);
   return cachedSpaceId;
 }
 
-// v2.0 API response types (internal, mapped to our public types)
+// v2.0 API response types
 interface V2Rule {
   id: string;
   name: string;
   type: "scene" | "automation";
   status: "enable" | "disable";
-  running_mode?: string;
-  space_id?: string;
-}
-
-interface V2RuleDetail extends V2Rule {
-  decision_expr?: string;
-  conditions?: V2Condition[];
-  actions?: V2Action[];
-}
-
-interface V2Condition {
-  entity_id: string;
-  entity_type: string;
-  code?: number;
-  expr: {
-    status_code: string;
-    comparator: string;
-    status_value: boolean | string | number;
-  };
-}
-
-interface V2Action {
-  entity_id: string;
-  action_executor: string;
-  executor_property: {
-    function_code: string;
-    function_value: boolean | string | number;
-  };
 }
 
 interface V2ListResponse {
@@ -309,7 +290,8 @@ export async function createScene(body: CreateSceneBody): Promise<unknown> {
     type: "scene",
     actions: body.actions.map((a) => ({
       entity_id: a.entity_id,
-      action_executor: a.action_executor === "dpIssue" ? "device_issue" : a.action_executor,
+      action_executor:
+        a.action_executor === "dpIssue" ? "device_issue" : a.action_executor,
       executor_property: convertActionPropertyToV2(a.executor_property),
     })),
   });
@@ -364,7 +346,8 @@ export async function createAutomation(
     })),
     actions: body.actions.map((a) => ({
       entity_id: a.entity_id,
-      action_executor: a.action_executor === "dpIssue" ? "device_issue" : a.action_executor,
+      action_executor:
+        a.action_executor === "dpIssue" ? "device_issue" : a.action_executor,
       executor_property: convertActionPropertyToV2(a.executor_property),
     })),
   });
@@ -392,7 +375,6 @@ export async function deleteAutomation(
   );
 }
 
-// Helper: convert v1.0 action executor_property { switch_1: true } to v2.0 format
 function convertActionPropertyToV2(
   prop: Record<string, unknown>
 ): { function_code: string; function_value: unknown } {
@@ -424,11 +406,4 @@ export async function deleteTimer(
     "DELETE",
     `/v1.0/devices/${deviceId}/timer-tasks/${timerId}`
   );
-}
-
-// === Home APIs ===
-
-export async function getHomes(): Promise<TuyaHome[]> {
-  const uid = await getUid();
-  return tuyaRequest<TuyaHome[]>("GET", `/v1.0/users/${uid}/homes`);
 }

@@ -1,8 +1,7 @@
-"use server";
-
-import fs from "fs/promises";
-import path from "path";
-import crypto from "crypto";
+import fs from "node:fs/promises";
+import path from "node:path";
+import crypto from "node:crypto";
+import { homedir } from "node:os";
 
 import {
   sendCommand,
@@ -15,7 +14,7 @@ import {
   deleteAutomation,
   createTimer,
   deleteTimer,
-} from "@/lib/tuya";
+} from "./tuya";
 
 import type {
   CreateAutomationBody,
@@ -23,13 +22,27 @@ import type {
   MirrorButton,
   MirrorGroup,
   MirrorGroupsData,
-} from "@/lib/types";
+} from "../../lib/types";
 
-type ActionResult<T = unknown> =
+export type ActionResult<T = unknown> =
   | { success: true; data?: T }
   | { success: false; error: string };
 
-const MIRRORS_PATH = path.join(process.cwd(), "data", "mirrors.json");
+const APP_DIR = path.join(homedir(), ".smart-life-manager");
+const MIRRORS_PATH = path.join(APP_DIR, "mirrors.json");
+
+async function ensureMirrorsFile(): Promise<void> {
+  try {
+    await fs.access(MIRRORS_PATH);
+  } catch {
+    await fs.mkdir(path.dirname(MIRRORS_PATH), { recursive: true });
+    await fs.writeFile(
+      MIRRORS_PATH,
+      JSON.stringify({ groups: [] }, null, 2),
+      "utf-8"
+    );
+  }
+}
 
 // === Device Actions ===
 
@@ -44,7 +57,8 @@ export async function toggleDeviceAction(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to toggle device",
+      error:
+        error instanceof Error ? error.message : "Failed to toggle device",
     };
   }
 }
@@ -147,7 +161,9 @@ export async function createAutomationAction(
     return {
       success: false,
       error:
-        error instanceof Error ? error.message : "Failed to create automation",
+        error instanceof Error
+          ? error.message
+          : "Failed to create automation",
     };
   }
 }
@@ -163,7 +179,9 @@ export async function toggleAutomationAction(
     return {
       success: false,
       error:
-        error instanceof Error ? error.message : "Failed to toggle automation",
+        error instanceof Error
+          ? error.message
+          : "Failed to toggle automation",
     };
   }
 }
@@ -178,7 +196,9 @@ export async function deleteAutomationAction(
     return {
       success: false,
       error:
-        error instanceof Error ? error.message : "Failed to delete automation",
+        error instanceof Error
+          ? error.message
+          : "Failed to delete automation",
     };
   }
 }
@@ -220,6 +240,7 @@ export async function deleteTimerAction(
 // === Mirror Group Actions ===
 
 async function readMirrorGroups(): Promise<MirrorGroupsData> {
+  await ensureMirrorsFile();
   const raw = await fs.readFile(MIRRORS_PATH, "utf-8");
   return JSON.parse(raw) as MirrorGroupsData;
 }
@@ -230,11 +251,10 @@ async function writeMirrorGroups(data: MirrorGroupsData): Promise<void> {
 
 function mirrorPairLabel(a: MirrorButton, b: MirrorButton): string {
   if (a.room && b.room && a.room === b.room) {
-    // Same room - strip room from second label to avoid repetition
     const bShort = b.label.replace(`${b.room} `, "");
-    return `${a.label} \u2194 ${bShort}`;
+    return `${a.label} ↔ ${bShort}`;
   }
-  return `${a.label} \u2194 ${b.label}`;
+  return `${a.label} ↔ ${b.label}`;
 }
 
 export async function createMirrorGroupAction(
@@ -246,19 +266,14 @@ export async function createMirrorGroupAction(
     const automationIds: string[] = [];
 
     for (const mirror of mirrors) {
-      // main ON -> mirror ON
       const a1 = await createAutomation({
-        name: `Mirror: ${mirrorPairLabel(main, mirror)} (ON\u2192ON)`,
+        name: `Mirror: ${mirrorPairLabel(main, mirror)} (ON→ON)`,
         conditions: [
           {
             entity_id: main.device_id,
             entity_type: 1,
             order_num: 1,
-            display: {
-              code: main.button_code,
-              operator: "==",
-              value: true,
-            },
+            display: { code: main.button_code, operator: "==", value: true },
           },
         ],
         actions: [
@@ -272,19 +287,14 @@ export async function createMirrorGroupAction(
       });
       automationIds.push(a1.id);
 
-      // main OFF -> mirror OFF
       const a2 = await createAutomation({
-        name: `Mirror: ${mirrorPairLabel(main, mirror)} (OFF\u2192OFF)`,
+        name: `Mirror: ${mirrorPairLabel(main, mirror)} (OFF→OFF)`,
         conditions: [
           {
             entity_id: main.device_id,
             entity_type: 1,
             order_num: 1,
-            display: {
-              code: main.button_code,
-              operator: "==",
-              value: false,
-            },
+            display: { code: main.button_code, operator: "==", value: false },
           },
         ],
         actions: [
@@ -298,9 +308,8 @@ export async function createMirrorGroupAction(
       });
       automationIds.push(a2.id);
 
-      // mirror ON -> main ON
       const a3 = await createAutomation({
-        name: `Mirror: ${mirrorPairLabel(mirror, main)} (ON\u2192ON)`,
+        name: `Mirror: ${mirrorPairLabel(mirror, main)} (ON→ON)`,
         conditions: [
           {
             entity_id: mirror.device_id,
@@ -324,9 +333,8 @@ export async function createMirrorGroupAction(
       });
       automationIds.push(a3.id);
 
-      // mirror OFF -> main OFF
       const a4 = await createAutomation({
-        name: `Mirror: ${mirrorPairLabel(mirror, main)} (OFF\u2192OFF)`,
+        name: `Mirror: ${mirrorPairLabel(mirror, main)} (OFF→OFF)`,
         conditions: [
           {
             entity_id: mirror.device_id,

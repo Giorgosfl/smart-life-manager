@@ -1,3 +1,5 @@
+import { Electroview } from "electrobun/view";
+import type { AppRPCSchema } from "../shared/rpc-schema";
 import type {
   TuyaDevice,
   TuyaDeviceFunction,
@@ -17,105 +19,99 @@ type ActionResult<T = unknown> =
   | { success: true; data?: T }
   | { success: false; error: string };
 
-declare global {
-  interface Window {
-    api: {
-      invoke(channel: string, ...args: unknown[]): Promise<unknown>;
-    };
-  }
-}
+const rpc = Electroview.defineRPC<AppRPCSchema>({
+  handlers: {
+    requests: {},
+  },
+});
 
-function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
-  return window.api.invoke(channel, ...args) as Promise<T>;
-}
+const electroview = new Electroview({ rpc });
 
 // --- Credentials ---
 export const credentialsExists = () =>
-  invoke<boolean>("credentials:exists");
+  electroview.rpc!.request.credentialsExists();
 
 export const credentialsGet = () =>
-  invoke<{ clientId: string; baseUrl: string; appUid: string } | null>(
-    "credentials:get"
-  );
+  electroview.rpc!.request.credentialsGet();
 
 export const credentialsSet = (creds: {
   clientId: string;
   clientSecret: string;
   baseUrl: string;
   appUid: string;
-}) => invoke<ActionResult>("credentials:set", creds);
+}) => electroview.rpc!.request.credentialsSet(creds);
 
 // --- Rooms ---
 export const roomsGetAll = () =>
-  invoke<TuyaRoom[]>("rooms:getAll");
+  electroview.rpc!.request.roomsGetAll();
 
 // --- Devices ---
 export const devicesGetAll = () =>
-  invoke<TuyaDevice[]>("devices:getAll");
+  electroview.rpc!.request.devicesGetAll();
 
 export const devicesGetFunctions = (deviceId: string) =>
-  invoke<TuyaDeviceFunction[]>("devices:getFunctions", deviceId);
+  electroview.rpc!.request.devicesGetFunctions({ deviceId });
 
 export const devicesSendCommand = (
   deviceId: string,
   commands: { code: string; value: boolean | string | number }[]
-) => invoke<ActionResult<boolean>>("devices:sendCommand", deviceId, commands);
+) => electroview.rpc!.request.devicesSendCommand({ deviceId, commands });
 
 export const devicesRename = (deviceId: string, name: string) =>
-  invoke<ActionResult<boolean>>("devices:rename", deviceId, name);
+  electroview.rpc!.request.devicesRename({ deviceId, name });
 
 export const devicesControlShutter = (
   deviceId: string,
   action: "open" | "close" | "stop"
-) => invoke<ActionResult<boolean>>("devices:controlShutter", deviceId, action);
+) => electroview.rpc!.request.devicesControlShutter({ deviceId, action });
 
 // --- Scenes ---
 export const scenesGetAll = () =>
-  invoke<TuyaScene[]>("scenes:getAll");
+  electroview.rpc!.request.scenesGetAll();
 
 export const scenesTrigger = (sceneId: string) =>
-  invoke<ActionResult<boolean>>("scenes:trigger", sceneId);
+  electroview.rpc!.request.scenesTrigger({ sceneId });
 
 export const scenesCreate = (
   name: string,
   actions: TuyaSceneAction[]
-) => invoke<ActionResult>("scenes:create", name, actions);
+) => electroview.rpc!.request.scenesCreate({ name, actions });
 
 export const scenesDelete = (sceneId: string) =>
-  invoke<ActionResult<boolean>>("scenes:delete", sceneId);
+  electroview.rpc!.request.scenesDelete({ sceneId });
 
 // --- Automations ---
 export const automationsGetAll = () =>
-  invoke<TuyaAutomation[]>("automations:getAll");
+  electroview.rpc!.request.automationsGetAll();
 
 export const automationsCreate = (body: CreateAutomationBody) =>
-  invoke<ActionResult<{ id: string }>>("automations:create", body);
+  electroview.rpc!.request.automationsCreate({ body });
 
 export const automationsToggle = (automationId: string, enabled: boolean) =>
-  invoke<ActionResult<boolean>>("automations:toggle", automationId, enabled);
+  electroview.rpc!.request.automationsToggle({ automationId, enabled });
 
 export const automationsDelete = (automationId: string) =>
-  invoke<ActionResult<boolean>>("automations:delete", automationId);
+  electroview.rpc!.request.automationsDelete({ automationId });
 
 // --- Timers ---
 export const timersGetAll = (deviceId: string) =>
-  invoke<TuyaTimer[]>("timers:getAll", deviceId);
+  electroview.rpc!.request.timersGetAll({ deviceId });
 
 export const timersCreate = (deviceId: string, body: CreateTimerBody) =>
-  invoke<ActionResult>("timers:create", deviceId, body);
+  electroview.rpc!.request.timersCreate({ deviceId, body });
 
 export const timersDelete = (deviceId: string, timerId: string) =>
-  invoke<ActionResult<boolean>>("timers:delete", deviceId, timerId);
+  electroview.rpc!.request.timersDelete({ deviceId, timerId });
 
 // --- Mirrors ---
 export const mirrorsGetAll = () =>
-  invoke<ActionResult<MirrorGroupsData>>("mirrors:getAll");
+  electroview.rpc!.request.mirrorsGetAll();
 
 export const mirrorsCreate = (
   name: string,
   main: MirrorButton,
   mirrors: MirrorButton[]
-) => invoke<ActionResult<MirrorGroup>>("mirrors:create", name, main, mirrors);
+) => electroview.rpc!.request.mirrorsCreate({ name, main, mirrors });
 
 export const mirrorsDelete = (groupId: string) =>
-  invoke<ActionResult<boolean>>("mirrors:delete", groupId);
+  electroview.rpc!.request.mirrorsDelete({ groupId });

@@ -2,51 +2,57 @@
 
 ## Architecture
 
-This is an **Electron desktop app** (not a web app). It uses:
-- **Electron** main process for all Tuya Cloud API calls, credential storage, and file I/O
-- **Vite + React 19** renderer as a single-page app
+This is an **Electrobun desktop app**. It uses:
+- **Electrobun** with **Bun** runtime for the main process (Tuya Cloud API calls, credential storage, file I/O)
+- **Vite + React 19** renderer as a single-page app (served via system native webview)
 - **React Router v7** (hash routing) for navigation
 - **TanStack Query v5** for data fetching and cache management
 - **Tailwind CSS v4** for styling
-- **electron-store v8** + Electron `safeStorage` for encrypted credential storage
+- **AES-256-GCM** encryption with machine-specific key file for credential storage
+- **Typed RPC** for communication between main process and renderer (replaces Electron IPC)
 
 ## Key Architecture Decisions
 
-- All Tuya API calls happen in the main process (`electron/lib/tuya.ts`), never in the renderer
-- Renderer communicates with main via typed IPC (`src/api/ipc.ts` <-> `electron/ipc/*.ts`)
-- Credentials (especially `clientSecret`) never leave the main process - `credentials:get` omits the secret
+- All Tuya API calls happen in the Bun main process (`src/bun/tuya.ts`), never in the renderer
+- Renderer communicates with main via Electrobun's typed RPC (`src/api/ipc.ts` <-> `src/bun/rpc-handlers.ts`)
+- RPC schema defined in `src/shared/rpc-schema.ts` provides end-to-end type safety
+- Credentials (especially `clientSecret`) never leave the main process - `credentialsGet` omits the secret
 - The `@` path alias maps to `./src/` and `@lib` maps to `./lib/` (shared types)
 - `lib/types.ts` is the single source of truth for TypeScript interfaces, shared by both processes
+- Vite builds the React renderer; Electrobun bundles the main process and copies renderer output into the app
 
 ## File Structure
 
 ```
-electron/          # Main process (Node.js)
-  main.ts          # App entry, BrowserWindow creation
-  preload.ts       # contextBridge IPC exposure
-  store.ts         # electron-store + safeStorage credential management
-  ipc/             # IPC handler registration
-  lib/             # Tuya API client + actions (mirrors, devices, etc.)
+src/
+  bun/               # Main process (Bun runtime)
+    index.ts         # App entry, BrowserWindow + RPC setup
+    store.ts         # AES-256-GCM credential storage
+    tuya.ts          # Tuya Cloud API client
+    actions.ts       # Action wrappers (mirrors, devices, scenes, etc.)
+    rpc-handlers.ts  # All RPC request handlers
 
-src/               # Renderer (React SPA)
-  main.tsx         # React entry point
-  App.tsx          # Layout with sidebar nav
-  router.tsx       # Route definitions
-  api/ipc.ts       # Typed IPC client (all window.api.invoke calls)
-  pages/           # All page components
-  providers/       # QueryProvider
+  shared/            # Shared between processes
+    rpc-schema.ts    # Typed RPC schema (all request/response types)
 
-lib/               # Shared (imported by both processes)
-  types.ts         # All TypeScript interfaces
+  api/ipc.ts         # Renderer RPC client (Electroview calls)
+  main.tsx           # React entry point
+  App.tsx            # Layout with sidebar nav
+  router.tsx         # Route definitions
+  pages/             # All page components
+  providers/         # QueryProvider
+
+lib/                 # Shared types
+  types.ts           # All TypeScript interfaces
+
+electrobun.config.ts # Electrobun build configuration
+vite.config.ts       # Renderer (React) build configuration
 ```
 
 ## Development
 
 ```bash
-npm run dev        # Starts Vite dev server + Electron concurrently
-npm run build      # Builds renderer + main for production
-npm run dist       # Build + package with electron-builder
+npm run dev          # Starts Vite dev server + Electrobun concurrently
+npm run build        # Builds renderer + packages with Electrobun
+bunx electrobun dev  # Run Electrobun dev mode directly
 ```
-
-# currentDate
-Today's date is 2026-03-27.
