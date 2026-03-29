@@ -7,6 +7,7 @@ import {
   type Credentials,
 } from "./store";
 import { clearTuyaCaches } from "./tuya";
+import { ContextMenu } from "electrobun/bun";
 import * as tuya from "./tuya";
 import * as actions from "./actions";
 
@@ -135,6 +136,42 @@ export const handlers = {
     ),
 
   killSwitchDelete: () => actions.deleteKillSwitchAction(),
+
+  // --- Context Menu ---
+  showDeviceContextMenu: (params: {
+    deviceId: string;
+    deviceName: string;
+    isShutter: boolean;
+    switches: { code: string; value: boolean; label: string }[];
+  }) => {
+    return new Promise<Record<string, unknown> | null>((resolve) => {
+      let resolved = false;
+      const menuItems: any[] = [
+        { label: "Rename", action: "rename" },
+        { label: "Hide", action: "hide" },
+        { type: "separator" },
+        { label: "Delete", action: "delete" },
+      ];
+
+      ContextMenu.on("context-menu-clicked", (event: any) => {
+        if (resolved) return;
+        resolved = true;
+        const data = event?.detail ?? event;
+        const action = data?.action ?? data?.data?.action;
+        resolve({ action });
+      });
+
+      ContextMenu.showContextMenu(menuItems);
+
+      // Menu dismissed without selection
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          resolve(null);
+        }
+      }, 30000);
+    });
+  },
 };
 
 // Re-export types used in handler params

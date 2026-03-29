@@ -153,6 +153,17 @@ export type AppRPCSchema = {
         params: undefined;
         response: ActionResult<boolean>;
       };
+
+      // Context Menu
+      showDeviceContextMenu: {
+        params: {
+          deviceId: string;
+          deviceName: string;
+          isShutter: boolean;
+          switches: { code: string; value: boolean; label: string }[];
+        };
+        response: Record<string, unknown> | null;
+      };
     };
   }>;
   webview: RPCSchema<{

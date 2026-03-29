@@ -9,6 +9,7 @@ import {
   roomsGetAll,
   hiddenDevicesGet,
   hiddenDevicesSet,
+  showDeviceContextMenu,
 } from "@/api/ipc";
 
 function getCategoryIcon(category: string): string {
@@ -134,6 +135,28 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
     }
   }
 
+  async function handleContextMenu(e: React.MouseEvent) {
+    e.preventDefault();
+    const result = await showDeviceContextMenu({
+      deviceId: device.id,
+      deviceName: device.name,
+      isShutter,
+      switches,
+    });
+    if (!result) return;
+
+    switch (result.action) {
+      case "rename":
+        setEditName(device.name);
+        setIsEditing(true);
+        break;
+      case "hide":
+      case "delete":
+        setConfirmHide(true);
+        break;
+    }
+  }
+
   function handleToggle(code: string, currentValue: boolean) {
     toggleMutation.mutate({
       deviceId: device.id,
@@ -143,7 +166,7 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
   }
 
   return (
-    <div className="bg-card border border-card-border rounded-xl p-4 shadow-sm flex flex-col gap-3 transition-shadow duration-200 hover:shadow-md">
+    <div onContextMenu={handleContextMenu} className="bg-card border border-card-border rounded-xl p-4 shadow-sm flex flex-col gap-3 transition-shadow duration-200 hover:shadow-md">
       <div className="flex items-center gap-3">
         <span className="text-2xl" aria-hidden="true">
           {getCategoryIcon(device.category)}

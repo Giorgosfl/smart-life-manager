@@ -144,3 +144,11 @@ export const killSwitchCreate = (
 
 export const killSwitchDelete = () =>
   electroview.rpc!.request.killSwitchDelete();
+
+// --- Context Menu ---
+export const showDeviceContextMenu = (params: {
+  deviceId: string;
+  deviceName: string;
+  isShutter: boolean;
+  switches: { code: string; value: boolean; label: string }[];
+}) => electroview.rpc!.request.showDeviceContextMenu(params);
