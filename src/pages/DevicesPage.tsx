@@ -24,11 +24,22 @@ function getCategoryIcon(category: string): string {
   }
 }
 
-function getSwitchStatus(device: TuyaDevice): boolean | null {
-  if (!device.status) return null;
-  const switchStatus = device.status.find((s) => s.code === "switch_1");
-  if (switchStatus === undefined) return null;
-  return Boolean(switchStatus.value);
+function getSwitchStatuses(
+  device: TuyaDevice
+): { code: string; value: boolean; label: string }[] {
+  if (!device.status) return [];
+  const switches = device.status
+    .filter((s) => s.code.startsWith("switch_") || s.code === "switch")
+    .map((s) => ({
+      code: s.code,
+      value: Boolean(s.value),
+      label:
+        s.code === "switch"
+          ? "Switch"
+          : `Button ${s.code.replace("switch_", "")}`,
+    }))
+    .sort((a, b) => a.code.localeCompare(b.code));
+  return switches;
 }
 
 function DeviceCard({ device }: { device: TuyaDevice }) {
@@ -37,7 +48,7 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
   const [editName, setEditName] = useState(device.name);
 
   const isShutter = device.category === "cl" || device.category === "clkg";
-  const switchOn = getSwitchStatus(device);
+  const switches = getSwitchStatuses(device);
 
   const toggleMutation = useMutation({
     mutationFn: ({
@@ -49,8 +60,27 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
       code: string;
       value: boolean;
     }) => devicesSendCommand(deviceId, [{ code, value }]),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["devices"] });
+    onMutate: async ({ deviceId, code, value }) => {
+      await queryClient.cancelQueries({ queryKey: ["devices"] });
+      const previous = queryClient.getQueryData<TuyaDevice[]>(["devices"]);
+      queryClient.setQueryData<TuyaDevice[]>(["devices"], (old) =>
+        old?.map((d) =>
+          d.id === deviceId
+            ? {
+                ...d,
+                status: d.status.map((s) =>
+                  s.code === code ? { ...s, value } : s
+                ),
+              }
+            : d
+        )
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["devices"], context.previous);
+      }
     },
   });
 
@@ -70,9 +100,6 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
       deviceId: string;
       action: "open" | "close" | "stop";
     }) => devicesControlShutter(deviceId, action),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["devices"] });
-    },
   });
 
   function handleNameSave() {
@@ -85,12 +112,11 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
     }
   }
 
-  function handleToggle() {
-    if (switchOn === null) return;
+  function handleToggle(code: string, currentValue: boolean) {
     toggleMutation.mutate({
       deviceId: device.id,
-      code: "switch_1",
-      value: !switchOn,
+      code,
+      value: !currentValue,
     });
   }
 
@@ -147,11 +173,20 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
         </span>
       </div>
 
-      {switchOn !== null && (
-        <p className="text-xs text-muted">State: {switchOn ? "On" : "Off"}</p>
+      {switches.length > 0 && (
+        <div className="flex flex-col gap-1">
+          {switches.map((sw) => (
+            <p key={sw.code} className="text-xs text-muted">
+              {switches.length > 1 ? `${sw.label}: ` : "State: "}
+              <span className={sw.value ? "text-success" : ""}>
+                {sw.value ? "On" : "Off"}
+              </span>
+            </p>
+          ))}
+        </div>
       )}
 
-      <div className="flex items-center gap-2 mt-auto">
+      <div className="flex flex-wrap items-center gap-2 mt-auto">
         {isShutter ? (
           <>
             <button
@@ -185,23 +220,23 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
               Stop
             </button>
           </>
-        ) : switchOn !== null ? (
-          <button
-            type="button"
-            onClick={handleToggle}
-            disabled={toggleMutation.isPending}
-            className={`rounded-lg px-4 py-2 text-white text-sm disabled:opacity-50 ${
-              switchOn
-                ? "bg-danger hover:bg-danger-hover"
-                : "bg-primary hover:bg-primary-hover"
-            }`}
-          >
-            {toggleMutation.isPending
-              ? "..."
-              : switchOn
-                ? "Turn Off"
-                : "Turn On"}
-          </button>
+        ) : switches.length > 0 ? (
+          switches.map((sw) => (
+            <button
+              key={sw.code}
+              type="button"
+              onClick={() => handleToggle(sw.code, sw.value)}
+              disabled={toggleMutation.isPending}
+              className={`rounded-lg px-4 py-2 text-white text-sm disabled:opacity-50 ${
+                sw.value
+                  ? "bg-danger hover:bg-danger-hover"
+                  : "bg-primary hover:bg-primary-hover"
+              }`}
+            >
+              {switches.length > 1 ? `${sw.label} ` : ""}
+              {sw.value ? "Off" : "On"}
+            </button>
+          ))
         ) : null}
       </div>
     </div>
