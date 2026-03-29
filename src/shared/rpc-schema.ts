@@ -9,6 +9,7 @@ import type {
   TuyaTimer,
   CreateAutomationBody,
   CreateTimerBody,
+  KillSwitchConfig,
   MirrorButton,
   MirrorGroup,
   MirrorGroupsData,
@@ -124,6 +125,32 @@ export type AppRPCSchema = {
       };
       mirrorsDelete: {
         params: { groupId: string };
+        response: ActionResult<boolean>;
+      };
+
+      // Hidden Devices
+      devicesGetAllUnfiltered: { params: undefined; response: TuyaDevice[] };
+      hiddenDevicesGet: { params: undefined; response: string[] };
+      hiddenDevicesSet: {
+        params: { deviceIds: string[] };
+        response: ActionResult;
+      };
+
+      // Kill Switch
+      killSwitchGet: {
+        params: undefined;
+        response: ActionResult<KillSwitchConfig | null>;
+      };
+      killSwitchCreate: {
+        params: {
+          trigger: { device_id: string; button_code: string; label: string };
+          delay_seconds: number;
+          excluded_device_ids: string[];
+        };
+        response: ActionResult<KillSwitchConfig>;
+      };
+      killSwitchDelete: {
+        params: undefined;
         response: ActionResult<boolean>;
       };
     };

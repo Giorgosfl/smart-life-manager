@@ -19,6 +19,7 @@ interface StoreSchema {
     baseUrl: string;
     appUid: string;
   };
+  hiddenDeviceIds?: string[];
 }
 
 const APP_DIR = path.join(homedir(), ".smart-life-manager");
@@ -133,5 +134,18 @@ export function setCredentials(creds: Credentials): void {
     baseUrl: creds.baseUrl,
     appUid: creds.appUid,
   };
+  writeStore(store);
+}
+
+// --- Hidden Devices ---
+
+export function getHiddenDeviceIds(): string[] {
+  const store = readStore();
+  return store.hiddenDeviceIds ?? [];
+}
+
+export function setHiddenDeviceIds(ids: string[]): void {
+  const store = readStore();
+  store.hiddenDeviceIds = ids;
   writeStore(store);
 }

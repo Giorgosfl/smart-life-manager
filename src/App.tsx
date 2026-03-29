@@ -6,6 +6,7 @@ const navItems = [
   { to: "/automations", label: "Automations", icon: "\u26A1" },
   { to: "/timers", label: "Timers", icon: "\u23F0" },
   { to: "/mirrors", label: "Mirrors", icon: "\uD83E\uDE9E" },
+  { to: "/killswitch", label: "Kill Switch", icon: "\uD83D\uDED1" },
   { to: "/settings", label: "Settings", icon: "\u2699\uFE0F" },
 ];
 

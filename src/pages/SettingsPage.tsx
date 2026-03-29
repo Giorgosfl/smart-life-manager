@@ -1,5 +1,88 @@
 import { useState, useEffect } from "react";
-import { credentialsGet, credentialsSet, devicesGetAll } from "@/api/ipc";
+import {
+  credentialsGet,
+  credentialsSet,
+  devicesGetAll,
+  devicesGetAllUnfiltered,
+  hiddenDevicesGet,
+  hiddenDevicesSet,
+} from "@/api/ipc";
+import type { TuyaDevice } from "@lib/types";
+
+function HiddenDevicesSection() {
+  const [allDevices, setAllDevices] = useState<TuyaDevice[]>([]);
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    Promise.all([devicesGetAllUnfiltered(), hiddenDevicesGet()]).then(
+      ([devices, ids]) => {
+        setAllDevices(devices);
+        setHiddenIds(new Set(ids));
+        setLoaded(true);
+      }
+    );
+  }, []);
+
+  function toggleDevice(id: string) {
+    setHiddenIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    await hiddenDevicesSet(Array.from(hiddenIds));
+    setSaving(false);
+  }
+
+  if (!loaded) return null;
+
+  return (
+    <div className="bg-card border border-card-border rounded-xl p-6 space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold">Hidden Devices</h2>
+        <p className="text-xs text-muted mt-1">
+          Hidden devices won't appear anywhere in the app.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
+        {allDevices.map((device) => (
+          <label
+            key={device.id}
+            className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-background transition-colors duration-150 cursor-pointer text-sm"
+          >
+            <input
+              type="checkbox"
+              checked={hiddenIds.has(device.id)}
+              onChange={() => toggleDevice(device.id)}
+              className="rounded"
+            />
+            <span className="flex-1 min-w-0 truncate">{device.name}</span>
+            <span className="text-xs text-muted">{device.category}</span>
+          </label>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        onClick={handleSave}
+        disabled={saving}
+        className="bg-primary text-white rounded-lg px-5 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-50 transition-colors"
+      >
+        {saving ? "Saving…" : "Save"}
+      </button>
+    </div>
+  );
+}
 
 const BASE_URL_OPTIONS = [
   { label: "Central Europe", value: "https://openapi.tuyaeu.com" },
@@ -88,6 +171,8 @@ export default function SettingsPage() {
   return (
     <div className="max-w-lg space-y-6">
       <h1 className="text-2xl font-bold">Settings</h1>
+
+      <HiddenDevicesSection />
 
       <div className="bg-card border border-card-border rounded-xl p-6 space-y-5">
         <h2 className="text-lg font-semibold">Tuya Cloud Credentials</h2>

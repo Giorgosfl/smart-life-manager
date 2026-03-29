@@ -10,6 +10,7 @@ import type {
   TuyaTimer,
   CreateAutomationBody,
   CreateTimerBody,
+  KillSwitchConfig,
   MirrorButton,
   MirrorGroup,
   MirrorGroupsData,
@@ -115,3 +116,31 @@ export const mirrorsCreate = (
 
 export const mirrorsDelete = (groupId: string) =>
   electroview.rpc!.request.mirrorsDelete({ groupId });
+
+// --- Hidden Devices ---
+export const devicesGetAllUnfiltered = () =>
+  electroview.rpc!.request.devicesGetAllUnfiltered();
+
+export const hiddenDevicesGet = () =>
+  electroview.rpc!.request.hiddenDevicesGet();
+
+export const hiddenDevicesSet = (deviceIds: string[]) =>
+  electroview.rpc!.request.hiddenDevicesSet({ deviceIds });
+
+// --- Kill Switch ---
+export const killSwitchGet = () =>
+  electroview.rpc!.request.killSwitchGet();
+
+export const killSwitchCreate = (
+  trigger: { device_id: string; button_code: string; label: string },
+  delay_seconds: number,
+  excluded_device_ids: string[]
+) =>
+  electroview.rpc!.request.killSwitchCreate({
+    trigger,
+    delay_seconds,
+    excluded_device_ids,
+  });
+
+export const killSwitchDelete = () =>
+  electroview.rpc!.request.killSwitchDelete();

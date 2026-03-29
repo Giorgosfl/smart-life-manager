@@ -14,14 +14,17 @@ import {
   deleteAutomation,
   createTimer,
   deleteTimer,
+  getDevices,
 } from "./tuya";
 
 import type {
   CreateAutomationBody,
   CreateTimerBody,
+  KillSwitchConfig,
   MirrorButton,
   MirrorGroup,
   MirrorGroupsData,
+  TuyaSceneAction,
 } from "../../lib/types";
 
 export type ActionResult<T = unknown> =
@@ -30,6 +33,7 @@ export type ActionResult<T = unknown> =
 
 const APP_DIR = path.join(homedir(), ".smart-life-manager");
 const MIRRORS_PATH = path.join(APP_DIR, "mirrors.json");
+const KILLSWITCH_PATH = path.join(APP_DIR, "killswitch.json");
 
 async function ensureMirrorsFile(): Promise<void> {
   try {
@@ -426,6 +430,170 @@ export async function getMirrorGroupsAction(): Promise<
         error instanceof Error
           ? error.message
           : "Failed to read mirror groups",
+    };
+  }
+}
+
+// === Kill Switch ===
+
+async function readKillSwitch(): Promise<KillSwitchConfig | null> {
+  try {
+    await fs.access(KILLSWITCH_PATH);
+    const raw = await fs.readFile(KILLSWITCH_PATH, "utf-8");
+    return JSON.parse(raw) as KillSwitchConfig;
+  } catch {
+    return null;
+  }
+}
+
+async function writeKillSwitch(config: KillSwitchConfig | null): Promise<void> {
+  if (config === null) {
+    try {
+      await fs.unlink(KILLSWITCH_PATH);
+    } catch {
+      // file didn't exist
+    }
+    return;
+  }
+  await fs.mkdir(path.dirname(KILLSWITCH_PATH), { recursive: true });
+  await fs.writeFile(KILLSWITCH_PATH, JSON.stringify(config, null, 2), "utf-8");
+}
+
+export async function getKillSwitchAction(): Promise<
+  ActionResult<KillSwitchConfig | null>
+> {
+  try {
+    const config = await readKillSwitch();
+    return { success: true, data: config };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to read kill switch config",
+    };
+  }
+}
+
+export async function createKillSwitchAction(
+  trigger: { device_id: string; button_code: string; label: string },
+  delaySeconds: number,
+  excludedDeviceIds: string[]
+): Promise<ActionResult<KillSwitchConfig>> {
+  try {
+    // Delete existing kill switch first
+    const existing = await readKillSwitch();
+    if (existing) {
+      try {
+        await deleteAutomation(existing.automation_id);
+      } catch {
+        // automation may have been deleted externally
+      }
+    }
+
+    const devices = await getDevices();
+    const excludedSet = new Set(excludedDeviceIds);
+    // Also exclude the trigger device itself
+    excludedSet.add(trigger.device_id);
+
+    const actions: TuyaSceneAction[] = [];
+
+    for (const device of devices) {
+      if (excludedSet.has(device.id)) continue;
+      if (!device.status) continue;
+
+      const isShutter = device.category === "cl" || device.category === "clkg";
+
+      if (isShutter) {
+        actions.push({
+          entity_id: device.id,
+          action_executor: "dpIssue",
+          executor_property: { control: "close" },
+        });
+      } else {
+        for (const s of device.status) {
+          if (s.code.startsWith("switch_") || s.code === "switch") {
+            actions.push({
+              entity_id: device.id,
+              action_executor: "dpIssue",
+              executor_property: { [s.code]: false },
+            });
+          }
+        }
+      }
+    }
+
+    if (actions.length === 0) {
+      return { success: false, error: "No devices to control" };
+    }
+
+    // Insert delay action at the beginning if configured
+    if (delaySeconds > 0) {
+      const delayMinutes = Math.floor(delaySeconds / 60);
+      const delaySecs = delaySeconds % 60;
+      actions.unshift({
+        entity_id: "delay",
+        action_executor: "delay",
+        executor_property: { minutes: delayMinutes, seconds: delaySecs },
+      });
+    }
+
+    const result = await createAutomation({
+      name: `Kill Switch: ${trigger.label}`,
+      conditions: [
+        {
+          entity_id: trigger.device_id,
+          entity_type: 1,
+          order_num: 1,
+          display: {
+            code: trigger.button_code,
+            operator: "==",
+            value: true,
+          },
+        },
+      ],
+      actions,
+      match_type: 1,
+    });
+
+    const config: KillSwitchConfig = {
+      id: crypto.randomUUID(),
+      trigger,
+      delay_seconds: delaySeconds,
+      excluded_device_ids: excludedDeviceIds,
+      automation_id: result.id,
+    };
+
+    await writeKillSwitch(config);
+    return { success: true, data: config };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to create kill switch",
+    };
+  }
+}
+
+export async function deleteKillSwitchAction(): Promise<ActionResult<boolean>> {
+  try {
+    const config = await readKillSwitch();
+    if (!config) {
+      return { success: false, error: "No kill switch configured" };
+    }
+
+    try {
+      await deleteAutomation(config.automation_id);
+    } catch {
+      // automation may have been deleted externally
+    }
+
+    await writeKillSwitch(null);
+    return { success: true, data: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to delete kill switch",
     };
   }
 }

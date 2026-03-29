@@ -2,6 +2,8 @@ import {
   hasCredentials,
   getCredentialsSafe,
   setCredentials,
+  getHiddenDeviceIds,
+  setHiddenDeviceIds,
   type Credentials,
 } from "./store";
 import { clearTuyaCaches } from "./tuya";
@@ -24,7 +26,11 @@ export const handlers = {
   roomsGetAll: () => tuya.getRooms(),
 
   // --- Devices ---
-  devicesGetAll: () => tuya.getDevices(),
+  devicesGetAll: async () => {
+    const devices = await tuya.getDevices();
+    const hidden = new Set(getHiddenDeviceIds());
+    return hidden.size > 0 ? devices.filter((d) => !hidden.has(d.id)) : devices;
+  },
 
   devicesGetFunctions: (params: { deviceId: string }) =>
     tuya.getDeviceFunctions(params.deviceId),
@@ -103,6 +109,32 @@ export const handlers = {
 
   mirrorsDelete: (params: { groupId: string }) =>
     actions.deleteMirrorGroupAction(params.groupId),
+
+  // --- Hidden Devices ---
+  devicesGetAllUnfiltered: () => tuya.getDevices(),
+
+  hiddenDevicesGet: () => getHiddenDeviceIds(),
+
+  hiddenDevicesSet: (params: { deviceIds: string[] }) => {
+    setHiddenDeviceIds(params.deviceIds);
+    return { success: true as const };
+  },
+
+  // --- Kill Switch ---
+  killSwitchGet: () => actions.getKillSwitchAction(),
+
+  killSwitchCreate: (params: {
+    trigger: { device_id: string; button_code: string; label: string };
+    delay_seconds: number;
+    excluded_device_ids: string[];
+  }) =>
+    actions.createKillSwitchAction(
+      params.trigger,
+      params.delay_seconds,
+      params.excluded_device_ids
+    ),
+
+  killSwitchDelete: () => actions.deleteKillSwitchAction(),
 };
 
 // Re-export types used in handler params

@@ -101,6 +101,14 @@ export interface MirrorGroup {
   automation_ids: string[];
 }
 
+export interface KillSwitchConfig {
+  id: string;
+  trigger: { device_id: string; button_code: string; label: string };
+  delay_seconds: number;
+  excluded_device_ids: string[];
+  automation_id: string;
+}
+
 export interface MirrorGroupsData {
   groups: MirrorGroup[];
 }
