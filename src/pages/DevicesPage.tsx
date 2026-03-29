@@ -121,7 +121,7 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
   }
 
   return (
-    <div className="bg-card border border-card-border rounded-xl p-4 shadow-sm flex flex-col gap-3">
+    <div className="bg-card border border-card-border rounded-xl p-4 shadow-sm flex flex-col gap-3 transition-shadow duration-200 hover:shadow-md">
       <div className="flex items-center gap-3">
         <span className="text-2xl" aria-hidden="true">
           {getCategoryIcon(device.category)}
@@ -130,6 +130,7 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
           {isEditing ? (
             <input
               type="text"
+              aria-label="Device name"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               onBlur={handleNameSave}
@@ -140,7 +141,7 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
                   setIsEditing(false);
                 }
               }}
-              className="w-full bg-transparent border-b border-primary outline-none text-sm font-semibold"
+              className="w-full bg-transparent border-b border-primary outline-none focus-visible:ring-2 focus-visible:ring-primary/50 text-sm font-semibold rounded-sm"
               autoFocus
             />
           ) : (
@@ -150,7 +151,7 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
                 setEditName(device.name);
                 setIsEditing(true);
               }}
-              className="text-sm font-semibold truncate text-left w-full hover:underline cursor-text"
+              className="text-sm font-semibold truncate text-left w-full hover:text-primary cursor-text rounded-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
               title="Click to rename"
             >
               {device.name}
@@ -158,7 +159,7 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
           )}
         </div>
         <span
-          className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full ${
+          className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full shrink-0 ${
             device.online
               ? "bg-success/10 text-success"
               : "bg-muted/10 text-muted"
@@ -176,17 +177,28 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
       {switches.length > 0 && (
         <div className="flex flex-col gap-1">
           {switches.map((sw) => (
-            <p key={sw.code} className="text-xs text-muted">
-              {switches.length > 1 ? `${sw.label}: ` : "State: "}
-              <span className={sw.value ? "text-success" : ""}>
+            <div key={sw.code} className="flex items-center justify-between text-xs text-muted">
+              <span>{switches.length > 1 ? sw.label : "State"}</span>
+              <span
+                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
+                  sw.value
+                    ? "bg-success/10 text-success"
+                    : "bg-muted/10 text-muted"
+                }`}
+              >
+                <span
+                  className={`inline-block w-1.5 h-1.5 rounded-full ${
+                    sw.value ? "bg-success" : "bg-muted"
+                  }`}
+                />
                 {sw.value ? "On" : "Off"}
               </span>
-            </p>
+            </div>
           ))}
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2 mt-auto">
+      <div className="grid grid-cols-2 gap-2 mt-auto">
         {isShutter ? (
           <>
             <button
@@ -195,7 +207,7 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
                 shutterMutation.mutate({ deviceId: device.id, action: "open" })
               }
               disabled={shutterMutation.isPending}
-              className="bg-primary text-white rounded-lg px-4 py-2 hover:bg-primary-hover disabled:opacity-50 text-sm"
+              className="bg-primary text-white rounded-lg px-4 py-2 text-sm transition-colors duration-150 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 disabled:opacity-50"
             >
               Open
             </button>
@@ -205,7 +217,7 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
                 shutterMutation.mutate({ deviceId: device.id, action: "close" })
               }
               disabled={shutterMutation.isPending}
-              className="bg-primary text-white rounded-lg px-4 py-2 hover:bg-primary-hover disabled:opacity-50 text-sm"
+              className="bg-primary text-white rounded-lg px-4 py-2 text-sm transition-colors duration-150 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 disabled:opacity-50"
             >
               Close
             </button>
@@ -215,7 +227,7 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
                 shutterMutation.mutate({ deviceId: device.id, action: "stop" })
               }
               disabled={shutterMutation.isPending}
-              className="bg-danger text-white rounded-lg px-4 py-2 hover:bg-danger-hover disabled:opacity-50 text-sm"
+              className="bg-danger text-white rounded-lg px-4 py-2 text-sm transition-colors duration-150 hover:bg-danger-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/50 focus-visible:ring-offset-2 disabled:opacity-50"
             >
               Stop
             </button>
@@ -227,10 +239,10 @@ function DeviceCard({ device }: { device: TuyaDevice }) {
               type="button"
               onClick={() => handleToggle(sw.code, sw.value)}
               disabled={toggleMutation.isPending}
-              className={`rounded-lg px-4 py-2 text-white text-sm disabled:opacity-50 ${
+              className={`rounded-lg px-4 py-2 text-white text-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 ${
                 sw.value
-                  ? "bg-danger hover:bg-danger-hover"
-                  : "bg-primary hover:bg-primary-hover"
+                  ? "bg-danger hover:bg-danger-hover focus-visible:ring-danger/50"
+                  : "bg-primary hover:bg-primary-hover focus-visible:ring-primary/50"
               }`}
             >
               {switches.length > 1 ? `${sw.label} ` : ""}
@@ -286,7 +298,7 @@ export default function DevicesPage() {
   if (isLoading) {
     return (
       <div className="p-6">
-        <p className="text-muted">Loading devices...</p>
+        <p className="text-muted">Loading devices\u2026</p>
       </div>
     );
   }
@@ -295,8 +307,8 @@ export default function DevicesPage() {
     return (
       <div className="p-6">
         <p className="text-danger">
-          Error loading devices:{" "}
-          {error instanceof Error ? error.message : "Unknown error"}
+          Failed to load devices.{" "}
+          {error instanceof Error ? error.message : "Please try again."}
         </p>
       </div>
     );
@@ -304,7 +316,7 @@ export default function DevicesPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Devices</h1>
+      <h1 className="text-2xl font-bold mb-6 text-pretty">Devices</h1>
       {devices.length === 0 ? (
         <p className="text-muted">No devices found.</p>
       ) : (
